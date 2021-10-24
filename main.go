@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type User struct {
@@ -98,15 +100,48 @@ func FindAllUserInRelatedField(db *gorm.DB) {
 
 }
 
+func CreateAnimals(db *gorm.DB) error {
+	// Note the use of tx as the database handle once you are within a transaction
+	tx := db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if err := tx.Error; err != nil {
+		return err
+	}
+
+	if err := tx.Create(&User{Name: "Tes"}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Logger.Info(context.TODO(), "create")
+
+	if err := tx.Create(&User{Name: "Yu"}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return tx.Commit().Error
+}
+
 func main() {
 	dsn := "host=localhost user=postgres password=postgres dbname=book_store port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	})
+
+	db.Logger.Info(context.Background(), "init")
 
 	db.AutoMigrate(&User{}, &User_Book{}, &Company{}, &Book{}, &CreditCard{}, &Address{})
 
 	//InsertUser(db)
 	// FindUserByID(db, 3, "fadellh")
-	FindAllUserInRelatedField(db)
+	// FindAllUserInRelatedField(db)
+	CreateAnimals(db)
 
 	if err != nil {
 		panic("Database Failed")
