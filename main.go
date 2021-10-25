@@ -36,8 +36,8 @@ type Book struct {
 
 //each user can have many address
 type Address struct {
-	Name   string
-	UserID int
+	AddressName string
+	UserID      int
 	gorm.Model
 }
 
@@ -65,8 +65,8 @@ func InsertUser(db *gorm.DB) {
 		CreditCard: CreditCard{
 			Number: "3456676556"},
 		Address: []Address{
-			{Name: "Jl. Sehahtera"},
-			{Name: "Jl. Cinta"},
+			{AddressName: "Jl. Sehahtera"},
+			{AddressName: "Jl. Cinta"},
 		},
 	}
 
@@ -77,6 +77,12 @@ func InsertUser(db *gorm.DB) {
 	}
 }
 
+type Result struct {
+	Name        string
+	Number      string
+	AddressName string
+}
+
 func FindUserByID(db *gorm.DB, id int, username string) {
 	var user User
 	//result := db.Last(&user)
@@ -85,6 +91,8 @@ func FindUserByID(db *gorm.DB, id int, username string) {
 
 	fmt.Println("row affected: ", result.RowsAffected)
 	fmt.Println(user)
+	fmt.Println(user.Address)
+	fmt.Println(user.CreditCard.Number)
 }
 
 func FindAllUserInRelatedField(db *gorm.DB) {
@@ -97,6 +105,34 @@ func FindAllUserInRelatedField(db *gorm.DB) {
 	// }
 
 	fmt.Println(user)
+
+}
+
+func FindUserInformation(db *gorm.DB) {
+	var result []Result
+
+	//err := db.Joins("CreditCard").Where(&User{Username: "jin"}).Find(&result).Error
+	// db.Model(&User{}).Select("users.name, credit_cards.number,addresses.name as addressName").Joins(
+	// 	"left join credit_cards on credit_cards.user_id = users.id").Joins(
+	// 	"left join addresses on addresses.user_id = users.id").Scan(&result)
+	rows, err := db.Model(&User{}).Select("users.name, credit_cards.number,addresses.name as AddressName").Joins(
+		"left join credit_cards on credit_cards.user_id = users.id").Joins(
+		"left join addresses on addresses.user_id = users.id").Not("addresses.name = ?", "").Rows()
+
+	if err != nil {
+		panic(err)
+	}
+
+	for rows.Next() {
+		// fmt.Println(rows)
+		// fmt.Println(rows.Columns())
+		// res := db.ScanRows(rows, &result)
+		// fmt.Println(rows.Close().Error())
+
+		// result = append(result, )
+	}
+
+	fmt.Println(result)
 
 }
 
@@ -131,7 +167,7 @@ func CreateAnimals(db *gorm.DB) error {
 func main() {
 	dsn := "host=localhost user=postgres password=postgres dbname=book_store port=5432 sslmode=disable TimeZone=Asia/Shanghai"
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Silent),
+		Logger: logger.Default.LogMode(logger.Info),
 	})
 
 	db.Logger.Info(context.Background(), "init")
@@ -139,9 +175,10 @@ func main() {
 	db.AutoMigrate(&User{}, &User_Book{}, &Company{}, &Book{}, &CreditCard{}, &Address{})
 
 	//InsertUser(db)
-	// FindUserByID(db, 3, "fadellh")
+	//FindUserByID(db, 3, "fadellh")
 	// FindAllUserInRelatedField(db)
-	CreateAnimals(db)
+	// CreateAnimals(db)
+	FindUserInformation(db)
 
 	if err != nil {
 		panic("Database Failed")
